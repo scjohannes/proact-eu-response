@@ -1,3 +1,4 @@
+#setwd()
 library(arrow)
 library(here)
 library(purrr)
@@ -6,10 +7,8 @@ library(markov.misc)
 library(ggplot2)
 library(fs)
 
-# Pretend that we are in the proact-sim project
-setwd("/home/felix/SHARE/imssrv_home/Simulations/EUPROACT Simulations/proact-sim")
-#OUTPUT_PATH <- "/home/felix/SHARE/imssrv_home/Simulations/EUPROACT Simulations/proact-sim/scripts/output/sim051225"
-OUTPUT_PATH <- "/home/felix/Simulations/EUPROACT Simulations/proact-sim/scripts/output"
+# Set paths to your results location
+OUTPUT_PATH <- here("..", "proact-sim", "scripts", "output", "sim051225")
 
 # # Get all results that are present
 # results_files <- dir_ls(OUTPUT_PATH, glob = "*simulation_*results_*.parquet")

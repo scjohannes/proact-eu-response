@@ -1,9 +1,8 @@
 # ============================================================================
-# Simulation 2. 12.12.2025 Sample size 1000
+# Simulation 2. 12.12.2025
 # ============================================================================
 
 ## Setup ----
-#setwd("SHARE/imssr_home/Simulations/EUPROACT Simulations/proact-sim")
 library(here)
 library(arrow)
 library(tidyverse)
@@ -19,17 +18,13 @@ library(markov.misc)
 ## Configuration ----
 N_PATIENTS <- 250000 # Size of superpopulation
 N_SIMULATIONS <- 1000 # Number of simulation iterations
-SAMPLE_SIZE <- c(1000) # Patients per sample. Run 1000 in a separate file.
+SAMPLE_SIZE <- c(600) # Patients per sample. Run 1000 in a separate file.
 N_BOOTSTRAP <- 500 # Bootstrap iterations per sample     ### CURRENTLY NEEDS TO BE CHANGED MANUALLY IN THE FUNCTION SPECIFICATION (STEP 5)
 N_CORES <- parallel::detectCores() - 1 # Parallel workers
 SEED <- 123456
 
-
-# File paths ----
-OUTPUT_PATH <- here("scripts", "output", "sim121225_n1000")
+OUTPUT_PATH <- here("scripts", "output", "sim121225")
 DATA_PATH <- here("scripts", "data")
-final_seed_path <- "seed_after_initial_run12_12_25_n1000_es1.50.rds"
-results_prefix <- "simulation_results_121225" # es_label and ss_label will be added
 
 # Create directories if they don't exist
 dir_create(OUTPUT_PATH)
@@ -91,10 +86,11 @@ for (i in effect_sizes) {
   ## STEP 2: Save Superpopulations to Disk ----
   ## ============================================================================
 
+  es_format <- sprintf("%.2f", round(es,2))
   # Full logitudinal states data
   long_states_path <- path(
     DATA_PATH,
-    paste0("superpopulation_longitudinal_states_", round(es, digits = 2),
+    paste0("superpopulation_longitudinal_states_", es_format,
           ".parquet"))
   write_parquet(longitudinal_state_data, long_states_path)
   message(paste0("Saved to ", long_states_path))
@@ -103,7 +99,7 @@ for (i in effect_sizes) {
   # Markov
   markov_path <- path(
     DATA_PATH,
-    paste0("superpopulation_markov_", round(es, digits = 2), ".parquet")
+    paste0("superpopulation_markov_", es_format, ".parquet")
   )
   write_parquet(markov_model_data, markov_path)
   message(paste0("Saved to ", markov_path))
@@ -112,7 +108,7 @@ for (i in effect_sizes) {
   # t-test
   t_path <- path(
     DATA_PATH,
-    paste0("superpopulation_ttest_", round(es, digits = 2), ".parquet")
+    paste0("superpopulation_ttest_", es_format, ".parquet")
   )
   write_parquet(t_data, t_path)
   message(paste0("Saved to ", t_path))
@@ -121,7 +117,7 @@ for (i in effect_sizes) {
   # DRS 60
   drs_path <- path(
     DATA_PATH,
-    paste0("superpopulation_drs_", round(es, digits = 2), ".parquet")
+    paste0("superpopulation_drs_", es_format, ".parquet")
   )
   write_parquet(drs_data, drs_path)
   message(paste0("Saved to ", drs_path))
@@ -130,7 +126,7 @@ for (i in effect_sizes) {
   # AG count data format
   count_path <- path(
     DATA_PATH,
-    paste0("superpopulation_count_", round(es, digits = 2), ".parquet"))
+    paste0("superpopulation_count_", es_format, ".parquet"))
 
   write_parquet(count_data, count_path)
   message(paste0("Saved to ", count_path))
@@ -143,12 +139,12 @@ for (i in effect_sizes) {
 ## ============================================================================
 
 # Get all markov files to determine available effect sizes
-markov_files <- dir_ls(DATA_PATH, glob = "*superpopulation_longitudinal_states_*.parquet")
+markov_files <- dir_ls(DATA_PATH, glob = "*superpopulation_markov_*.parquet")
 
 # Extract effect sizes from filenames
 available_effect_sizes <- markov_files |>
   path_file() |>
-  str_extract("(?<=superpopulation_longitudinal_states_)[0-9.-]+(?=\\.parquet)") |>
+  str_extract("(?<=superpopulation_markov_)[0-9.-]+(?=\\.parquet)") |>
   as.numeric() |>
   sort()
 
@@ -175,14 +171,14 @@ fit_markov_boot <- function(data, iter) {
   boot_output <- bootstrap_standardized_sops(
     fit,
     data = data,
-    n_boot = 500,                                           # SET MANUALLY HERE!
+    n_boot = 500,
     parallel = FALSE
   )
 
   # Compute time in target state by treatment
   boot_tis <- time_in_state(boot_output[["sops"]], target_states = 1)
   median_tis <- median(boot_tis$delta)
-  lower_tis <- quantile(boot_tis$delta, 0.024)                 # use alpha = 0.024
+  lower_tis <- quantile(boot_tis$delta, 0.024)
   upper_tis <- quantile(boot_tis$delta, 0.976)
   boot_sops <- as.data.frame(
     list(estimate = median_tis,
@@ -462,7 +458,7 @@ for (j in seq_along(SAMPLE_SIZE)) {
         fit_functions = fit_functions,
         sample_size = sample_size,
         allocation_ratio = 0.5,
-        rerandomize = rerandomize,                           # ONLY TRUE FOR H0!
+        rerandomize = rerandomize,               # ONLY TRUE FOR H0!
         seed = NULL,
       ),
       .options = furrr_options(
@@ -499,7 +495,7 @@ for (j in seq_along(SAMPLE_SIZE)) {
     # Set output path
     results_path <- path(
       OUTPUT_PATH,
-      paste0(results_prefix, es_label, ss_label, ".parquet")
+      paste0("simulation_results_121225", es_label, ss_label, ".parquet")
     )
     
     write_parquet(results, results_path)
@@ -515,10 +511,10 @@ for (j in seq_along(SAMPLE_SIZE)) {
 }
 
 final_seed <- .Random.seed
-saveRDS(final_seed, final_seed_path)
+saveRDS(final_seed, "seed_after_initial_run12_12_25_es1.5_ss600.rds")
 
 # Add this at the beginning of the document in future extensions of these simulations
-#.Random.seed <- readRDS("seed_after_initial_run12_12_25_n1000_es1.50.rds")
+#.Random.seed <- readRDS("seed_after_initial_run12_12_25_es1.5_ss600.rds")
 
 # Close parallel workers
 plan("sequential")
